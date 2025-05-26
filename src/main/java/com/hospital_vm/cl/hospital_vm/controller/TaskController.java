@@ -1,7 +1,7 @@
-package com.hospital_vm.cl.hospital_vm.controller; // IMPORTANTE: Asegúrate que esta línea coincida con la ruta real de tu paquete 'controller'
+package com.hospital_vm.cl.hospital_vm.controller; 
 
-import com.hospital_vm.cl.hospital_vm.model.Task; // Importa tu clase Task. ¡VERIFICA LA RUTA!
-import com.hospital_vm.cl.hospital_vm.service.TaskService; // Importa tu TaskService. ¡VERIFICA LA RUTA!
+import com.hospital_vm.cl.hospital_vm.model.Task; // Importa mi clase Task
+import com.hospital_vm.cl.hospital_vm.service.TaskService; // Importa mi TaskService
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
