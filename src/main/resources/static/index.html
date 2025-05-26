@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Tareas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .task-input {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .task-input input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        .task-input button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .task-input button:hover {
+            background-color: #218838;
+        }
+        .task-list {
+            list-style: none;
+            padding: 0;
+        }
+        .task-item {
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            word-break: break-word; /* Permite que el texto se ajuste si es muy largo */
+        }
+        .task-item.completed {
+            background-color: #e6ffe6;
+            text-decoration: line-through;
+            color: #777;
+        }
+        .task-item span {
+            flex-grow: 1;
+            margin-right: 10px;
+            cursor: pointer; /* Indica que se puede hacer clic para marcar/desmarcar */
+        }
+        .task-item button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .task-item button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mi Lista de Tareas</h1>
+        <div class="task-input">
+            <input type="text" id="taskDescription" placeholder="Añadir nueva tarea...">
+            <button onclick="addTask()">Añadir Tarea</button>
+        </div>
+        <ul id="taskList" class="task-list">
+            </ul>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080/api/tasks'; // URL de tu backend
+
+        // Función para cargar las tareas desde el backend
+        async function fetchTasks() {
+            try {
+                const response = await fetch(API_URL);
+                const tasks = await response.json();
+                renderTasks(tasks);
+            } catch (error) {
+                console.error('Error al cargar las tareas:', error);
+                alert('No se pudieron cargar las tareas. Asegúrate de que el backend esté funcionando.');
+            }
+        }
+
+        // Función para renderizar las tareas en la lista HTML
+        function renderTasks(tasks) {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = ''; // Limpia la lista actual
+
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+                if (task.completed) {
+                    li.classList.add('completed');
+                }
+                li.dataset.id = task.id; // Guarda el ID de la tarea en el elemento HTML
+
+                const span = document.createElement('span');
+                span.textContent = task.description;
+                span.onclick = () => toggleTaskCompleted(task.id, !task.completed); // Al hacer click, alterna el estado
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.onclick = () => deleteTask(task.id);
+
+                li.appendChild(span);
+                li.appendChild(deleteButton);
+                taskList.appendChild(li);
+            });
+        }
+
+        // Función para añadir una nueva tarea
+        async function addTask() {
+            const taskDescriptionInput = document.getElementById('taskDescription');
+            const description = taskDescriptionInput.value.trim();
+
+            if (!description) {
+                alert('La descripción de la tarea no puede estar vacía.');
+                return;
+            }
+
+            const newTask = {
+                description: description,
+                completed: false // Por defecto, una nueva tarea no está completada
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newTask)
+                });
+
+                if (response.ok) {
+                    taskDescriptionInput.value = ''; // Limpia el input
+                    fetchTasks(); // Recarga las tareas
+                } else {
+                    console.error('Error al añadir la tarea:', await response.text());
+                    alert('Error al añadir la tarea.');
+                }
+            } catch (error) {
+                console.error('Error de red al añadir la tarea:', error);
+                alert('Error de red al añadir la tarea.');
+            }
+        }
+
+        // Función para alternar el estado de completado de una tarea
+        async function toggleTaskCompleted(id, completed) {
+            const taskToUpdate = {
+                id: id,
+                completed: completed // El nuevo estado
+            };
+
+            try {
+                // Primero obtenemos la tarea completa para asegurarnos de no perder la descripción
+                const getResponse = await fetch(`${API_URL}/${id}`);
+                if (!getResponse.ok) {
+                    throw new Error('Tarea no encontrada para actualizar');
+                }
+                const existingTask = await getResponse.json();
+
+                const updatedTask = {
+                    description: existingTask.description, // Mantenemos la descripción original
+                    completed: completed
+                };
+
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedTask)
+                });
+
+                if (response.ok) {
+                    fetchTasks(); // Recarga las tareas
+                } else {
+                    console.error('Error al actualizar la tarea:', await response.text());
+                    alert('Error al actualizar la tarea.');
+                }
+            } catch (error) {
+                console.error('Error de red al actualizar la tarea:', error);
+                alert('Error de red al actualizar la tarea.');
+            }
+        }
+
+        // Función para eliminar una tarea
+        async function deleteTask(id) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
+                return; // Si el usuario cancela, no hacemos nada
+            }
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    fetchTasks(); // Recarga las tareas
+                } else {
+                    console.error('Error al eliminar la tarea:', await response.text());
+                    alert('Error al eliminar la tarea.');
+                }
+            } catch (error) {
+                console.error('Error de red al eliminar la tarea:', error);
+                alert('Error de red al eliminar la tarea.');
+            }
+        }
+
+        // Carga las tareas cuando la página se carga por primera vez
+        document.addEventListener('DOMContentLoaded', fetchTasks);
+    </script>
+</body>
+</html>
